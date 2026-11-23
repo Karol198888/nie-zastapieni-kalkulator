@@ -36,6 +36,21 @@ def wynik(zadania, wybrane, najwiecej_czasu=()):
     return srednia, poziom
 
 
+def dziesiatki(zadania, wybrane, najwiecej_czasu=()):
+    """Podział czasu na 10 części (tak pokazuje to strona od 23.11.2026): ile części to zadania
+    wysokie / średnie / niskie. Metoda największych reszt, więc suma zawsze wynosi 10."""
+    wagi = {'wysokie': 0.0, 'średnie': 0.0, 'niskie': 0.0}
+    for i in wybrane:
+        waga = WAGA_NAJWIECEJ_CZASU if (len(wybrane) == 1 or i in najwiecej_czasu) else WAGA_ZWYKLE
+        wagi[pasek(zadania[i][1])] += waga
+    razem = sum(wagi.values())
+    surowe = {k: v / razem * 10 for k, v in wagi.items()}
+    out = {k: int(v) for k, v in surowe.items()}
+    for k in sorted(surowe, key=lambda k: surowe[k] - out[k], reverse=True)[:10 - sum(out.values())]:
+        out[k] += 1
+    return out
+
+
 def pasek(ocena):
     return 'wysokie' if ocena >= PROGI_PASKA[1] else 'średnie' if ocena >= PROGI_PASKA[0] else 'niskie'
 
@@ -65,7 +80,9 @@ def main():
     for i in wyb:
         opis, ocena = z['t'][i]
         print(f"  [{i}] {ocena:.2f} {pasek(ocena):8} {'*' if i in czas else ' '} {opis}")
-    print(f"\nTwój wynik: {srednia:.2f} z 1, poziom {poziom} z 3")
+    d = dziesiatki(z['t'], wyb, czas)
+    print(f"\nNa 10 części czasu: {d['wysokie']} AI może wykonać dużą część, {d['średnie']} AI może pomóc, {d['niskie']} zostaje po Twojej stronie")
+    print(f"Średnia: {srednia:.2f} z 1, poziom {poziom} z 3")
 
 
 if __name__ == '__main__':

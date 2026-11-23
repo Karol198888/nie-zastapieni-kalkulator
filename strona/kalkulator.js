@@ -63,7 +63,9 @@
     freelance: ['Hui i in., 2024', 'https://www.brookings.edu/articles/is-generative-ai-a-job-killer-evidence-from-the-freelance-market/'],
     qje:       ['Brynjolfsson i in., 2025', 'https://academic.oup.com/qje/article/140/2/889/7990658'],
     nask:      ['NASK/ILO, czerwiec 2025', 'https://nask.pl/media/2025/06/Dodatek_Generatywna-sztuczna-inteligencja.pdf'],
-    kpmg:      ['KPMG, lipiec 2025', 'https://kpmg.com/pl/pl/wiedza/technologia/sztuczna-inteligencja-w-polsce.html']
+    kpmg:      ['KPMG, lipiec 2025', 'https://kpmg.com/pl/pl/wiedza/technologia/sztuczna-inteligencja-w-polsce.html'],
+    eu_firmy:  ['Eurostat, firmy 2025', 'https://doi.org/10.2908/ISOC_EB_AI'],
+    eu_osoby:  ['Eurostat, osoby 2025', 'https://doi.org/10.2908/ISOC_AI_IAIU']
   };
   function src(ids) {
     return ids.map(function (id) { return '<a class="src" href="' + SRC[id][1] + '" target="_blank" rel="noopener">' + SRC[id][0] + '</a>'; }).join(' · ');
@@ -206,7 +208,7 @@
   ];
 
   var dlg = $('quiz'), body = $('quiz-body'), foot = $('quiz-foot');
-  var cur = 0, done = false, lastPct = null, lastLevel = null, timer = null, lastShare = '';
+  var cur = 0, done = false, lastPct = null, lastTxt = '', lastLevel = null, timer = null, lastShare = '';
   function visible() { return STEPS.filter(function (st) { return !(st.skip && st.skip()); }); }
   function canGo(st) {
     if (st.type === 'multi' || st.type === 'tasks') return A[st.id].length > 0;
@@ -520,18 +522,59 @@
     });
   }
 
+
+  /* Polska a UE: Eurostat, badanie 2025 (isoc_eb_ai, isoc_ai_iaiu; dane pobrane 23.11.2026, aktualizacja Eurostatu z czerwca 2026) */
+  var EU = [
+    ['Firmy (10+ osób) używające AI', '8,4%', '20,0%'],
+    ['w tym duże firmy (250+ osób)', '45,8%', '55,0%'],
+    ['w tym małe firmy (10–49 osób)', '5,8%', '17,0%'],
+    ['Pracujący, którzy używają generatywnej AI w pracy', '13,3%', '21,8%'],
+    ['w tym w pracy umysłowej', '19,8%', '27,6%']
+  ];
+  function euBlock() {
+    return '<div class="eu"><p class="res-h">Polska na tle UE</p><p class="small" style="margin:4px 0 10px">Ile firm i ludzi faktycznie używa AI. Ocena Twoich zadań mówi, co AI potrafi; te liczby mówią, jak szybko to wchodzi do pracy.</p>' +
+      '<table class="eu-t"><thead><tr><th></th><th>Polska</th><th>UE</th></tr></thead><tbody>' +
+      EU.map(function (r) { return '<tr' + (r[0].indexOf('w tym') === 0 ? ' class="sub"' : '') + '><td>' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td></tr>'; }).join('') +
+      '</tbody></table><p class="small" style="margin-top:10px">W Polsce AI wchodzi do firm wolniej niż w UE, zwłaszcza do małych. W dużych firmach różnica jest mniejsza. Ten czas warto wykorzystać na naukę pracy z AI, zanim stanie się standardem także u nas. ' + src(['eu_firmy', 'eu_osoby']) + '</p></div>';
+  }
+
+  /* Co dalej: szkolenia z Bazy Usług Rozwojowych PARP (wyszukiwarka z hasłem), doradca w urzędzie pracy */
+  var BUR = 'https://uslugirozwojowe.parp.gov.pl/wyszukiwarka/uslugi/szukaj?nazwaUslugi=';
+  var BUR_HASLO = { obsluga: 'obsługa klienta', biuro: 'administracja biurowa', tekst: 'copywriting', tlum: 'tłumaczenia', grafika: 'grafika', it: 'programowanie', finanse: 'księgowość', sprzedaz: 'sprzedaż' };
+  function nextBlock(job) {
+    var grp = job ? groupOf(job.k) : null;
+    var haslo = grp ? BUR_HASLO[grp] : (job ? job.n.split(/[\s(,–-]/)[0].toLowerCase() : '');
+    var links = '<a class="btn btn-ghost" href="' + BUR + encodeURIComponent('sztuczna inteligencja') + '" target="_blank" rel="noopener">Szkolenia z AI w BUR</a>';
+    if (haslo) links += '<a class="btn btn-ghost" href="' + BUR + encodeURIComponent(haslo) + '" target="_blank" rel="noopener">Szkolenia: ' + esc(haslo) + '</a>';
+    return '<div class="next"><p class="res-h">Co dalej</p><p class="small" style="margin:4px 0 12px">Baza Usług Rozwojowych (PARP) to publiczna wyszukiwarka szkoleń i kursów, także z dofinansowaniem. Za darmo pomoże Ci też doradca zawodowy w powiatowym urzędzie pracy, również wtedy, gdy pracujesz. Tam zapytasz też o Krajowy Fundusz Szkoleniowy.</p>' +
+      '<div class="next-links">' + links + '</div></div>';
+  }
+
+  /* Podział na 10 części metodą największych reszt, żeby zawsze sumował się do 10 */
+  function tens(sp, tot) {
+    var k = ['hi', 'mid', 'lo'], out = {}, rest = 10;
+    var raw = k.map(function (x) { return sp[x] / tot * 10; });
+    k.forEach(function (x, i) { out[x] = Math.floor(raw[i]); rest -= out[x]; });
+    k.map(function (x, i) { return [x, raw[i] - out[x]]; }).sort(function (a, b) { return b[1] - a[1]; })
+      .slice(0, rest).forEach(function (p) { out[p[0]]++; });
+    return out;
+  }
+  function tile(cls, n) { var t = ''; for (var i = 0; i < n; i++) t += '<i class="' + cls + '"></i>'; return t; }
+
   function finish() {
     done = true;
     var r = compute(), job = BYCODE[A.zawod], name = job ? job.n : '';
-    var pct = Math.round(r.sp.hi / r.tot * 20) * 5;
+    var pct = Math.round(r.sp.hi / r.tot * 20) * 5, d = tens(r.sp, r.tot);
+    var hiTxt = d.hi > 0 ? d.hi + ' z 10' : (r.sp.hi > 0 ? 'mniej niż 1 z 10' : '0 z 10');
     var h = '';
 
+    /* „X z 10”: stały mianownik czytelniejszy niż procenty; kafelki pokazują od razu wszystkie trzy koszyki */
     h += '<div><p class="res-label">' + (name ? esc(name) : 'Twoja praca') + '</p><h3 class="quiz-q" id="quiz-q" tabindex="-1" style="margin-top:6px">Twój wynik</h3>' +
-      '<div class="res-big">' + (pct > 0 ? '<b>ok. ' + pct + '%</b><span>Twojego czasu w pracy to zadania, które AI może w dużej części wykonać.</span>'
-                                          : '<b>0%</b><span>Żadne z Twoich zadań nie należy do tych, które AI może w dużej części wykonać.</span>') + '</div>' +
-      '<div class="split" role="img" aria-label="Podział czasu: ok. ' + pct + '% na zadania, które AI może w dużej części wykonać">' +
-      '<i class="c-hi" style="width:' + (r.sp.hi / r.tot * 100) + '%"></i><i class="c-mid" style="width:' + (r.sp.mid / r.tot * 100) + '%"></i><i class="c-lo" style="width:' + (r.sp.lo / r.tot * 100) + '%"></i></div>' +
-      '<div class="legend"><span><i class="c-hi"></i>AI może wykonać dużą część</span><span><i class="c-mid"></i>AI może pomóc częściowo</span><span><i class="c-lo"></i>AI radzi sobie słabo</span></div></div>';
+      '<div class="res-big"><b>' + hiTxt + '</b><span>części Twojego czasu w pracy to zadania, które AI może w dużej części wykonać.</span></div>' +
+      '<div class="tiles" role="img" aria-label="Na 10 części Twojego czasu: ' + d.hi + ' to zadania, które AI może w dużej części wykonać, ' + d.mid + ' to zadania, przy których AI może pomóc, ' + d.lo + ' to zadania, z którymi AI radzi sobie słabo">' +
+      tile('c-hi', d.hi) + tile('c-mid', d.mid) + tile('c-lo', d.lo) + '</div>' +
+      '<div class="legend"><span><i class="c-hi"></i><b>' + d.hi + '</b> AI może wykonać dużą część</span><span><i class="c-mid"></i><b>' + d.mid + '</b> AI może pomóc częściowo</span><span><i class="c-lo"></i><b>' + d.lo + '</b> zostaje głównie po Twojej stronie</span></div>' +
+      '<p class="small" style="margin-top:10px">To mapa Twoich zadań, nie wyrok. Części liczymy z zaznaczonych przez Ciebie zadań. Te, na które idzie najwięcej czasu, ważą trzy razy więcej.</p></div>';
 
     h += '<div class="res-level"><div class="row"><span class="res-h">Ekspozycja Twoich zadań: ' + LEVELS[r.level] + '</span><span class="res-label">' + (r.level + 1) + ' z 4</span></div>' +
       '<div class="meter" aria-hidden="true">' + [0, 1, 2, 3].map(function (i) { return '<span class="' + (i <= r.level ? 'on' : '') + '"></span>'; }).join('') + '</div>' +
@@ -579,9 +622,10 @@
         '<div class="meter sm" aria-hidden="true">' + [1, 2, 3, 4].map(function (i) { return '<span class="' + (i <= job.g ? 'on' : '') + '"></span>'; }).join('') + '</div>' +
         '<p class="small">Indeks ocenia przeciętne zadania w zawodzie, a Twój wynik wyżej opiera się na tym, co faktycznie robisz. <a class="src" href="/zawody/' + job.slug + '/">Wszystkie zadania tego zawodu</a> · ' + src(['ilo']) + '</p></div>';
     }
+    h += nextBlock(job) + euBlock();
     if (job) h += '<div class="baro" id="baro"><p class="small" style="margin:0">Wczytuję prognozę urzędów pracy…</p></div>';
 
-    lastShare = (name ? name + ': ' : '') + 'ok. ' + pct + '% mojego czasu w pracy to zadania, które AI może w dużej części wykonać. Ekspozycja moich zadań: ' + LEVELS[r.level] + '. Sprawdź swoją pracę:';
+    lastShare = (name ? name + ': ' : '') + hiTxt + ' części mojego czasu w pracy to zadania, które AI może w dużej części wykonać. Ekspozycja moich zadań: ' + LEVELS[r.level] + '. Sprawdź swoją pracę:';
     h += '<div class="res-share"><span class="small" style="flex:1 1 200px">Znasz kogoś, kogo to dotyczy? Wyniki nigdzie się nie zapisują, więc każdy sprawdza swój.</span><button type="button" class="btn btn-ghost" id="q-share">Udostępnij wynik</button><span class="small" id="q-share-msg" role="status"></span></div>';
 
     body.innerHTML = h;
@@ -603,7 +647,7 @@
     if (job) { baroCss(); loadBaro(function () { baroFill(job.k); }); }
     if (r.own && job) ankInit(r, job);
     $('quiz-q').focus({ preventScroll: true });
-    lastPct = pct; lastLevel = LEVELS[r.level];
+    lastPct = pct; lastTxt = hiTxt; lastLevel = LEVELS[r.level];
   }
 
   function shareResult() {
@@ -643,7 +687,7 @@
     clearTimeout(timer);
     if (done) {
       $('quiz-open').innerHTML = 'Zobacz swój wynik <span class="arrow" aria-hidden="true">→</span>';
-      $('teaser-note').innerHTML = 'Twój wynik: <strong>ok. ' + lastPct + '% czasu</strong> na zadania, które AI może w dużej części wykonać, ekspozycja ' + lastLevel + '.';
+      $('teaser-note').innerHTML = 'Twój wynik: <strong>' + lastTxt + ' części czasu</strong> to zadania, które AI może w dużej części wykonać, ekspozycja ' + lastLevel + '.';
     }
   });
 
